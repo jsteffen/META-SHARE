@@ -167,6 +167,8 @@ INSTALLED_APPS = (
     'metashare.storage',
     
     'metashare.stats',
+    
+    'metashare.migration',
 
     'metashare.repository',
     'metashare.AdminTest',
