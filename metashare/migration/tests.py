@@ -3,17 +3,19 @@ Created on 23.07.2012
 
 @author: steffen
 '''
+import os
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.test.client import Client
-from metashare import settings, test_utils, migration_utils
+from metashare import settings, test_utils
 from metashare.accounts.models import UserProfile
 from metashare.repository.models import resourceInfoType_model
 from metashare.settings import ROOT_PATH, DJANGO_BASE
 from metashare.stats.models import LRStats, QueryStats, UsageStats
 from metashare.test_utils import create_user
-import os
-from metashare.storage.models import INTERNAL, INGESTED
+from metashare.export_node_from_2_1_2_to_2_9 import dump_users, dump_stats, \
+    dump_resources
+from metashare.import_node_to_2_9_from_2_1_2 import load_users, load_stats
 
 
 def importPublishedFixtures():
@@ -51,7 +53,7 @@ class ASerializeTests(TestCase):
         # test normal user
         create_user('normaluser', 'normal@example.com', 'secret')
         # dump
-        migration_utils.dump_users(os.path.join(settings.ROOT_PATH, "dump"))
+        dump_users(os.path.join(settings.ROOT_PATH, "dump"))
         
         
     def test_stats_resources(self):
@@ -73,10 +75,10 @@ class ASerializeTests(TestCase):
         self.assertTemplateUsed(response, 'repository/lr_view.html') 
         
         # dump stats
-        migration_utils.dump_stats(os.path.join(settings.ROOT_PATH, "dump"))
+        dump_stats(os.path.join(settings.ROOT_PATH, "dump"))
         
         # dump resources
-        migration_utils.dump_resources(os.path.join(settings.ROOT_PATH, "dump"))
+        dump_resources(os.path.join(settings.ROOT_PATH, "dump"))
         
         
 class BDeserializeTests(TestCase):
@@ -101,7 +103,7 @@ class BDeserializeTests(TestCase):
         """
         self.assertEquals(0, len(User.objects.all()))
         self.assertEquals(0, len(UserProfile.objects.all()))
-        migration_utils.load_users(os.path.join(settings.ROOT_PATH, "dump"))
+        load_users(os.path.join(settings.ROOT_PATH, "dump"))
         self.assertEquals(2, len(User.objects.all()))
         self.assertEquals(2, len(UserProfile.objects.all()))
         
@@ -112,7 +114,7 @@ class BDeserializeTests(TestCase):
         self.assertEquals(0, len(LRStats.objects.all()))
         self.assertEquals(0, len(QueryStats.objects.all()))
         self.assertEquals(0, len(UsageStats.objects.all()))
-        migration_utils.load_stats(os.path.join(settings.ROOT_PATH, "dump"))
+        load_stats(os.path.join(settings.ROOT_PATH, "dump"))
         self.assertEquals(4, len(LRStats.objects.all()))
         self.assertEquals(1, len(QueryStats.objects.all()))
         self.assertEquals(127, len(UsageStats.objects.all()))

@@ -5,6 +5,9 @@ Project: META-SHARE prototype implementation
 """
 import os
 import sys
+import logging
+from metashare.settings import LOG_LEVEL, LOG_HANDLER
+
 
 # Magic python path, based on http://djangosnippets.org/snippets/281/
 from os.path import abspath, dirname, join
@@ -26,7 +29,51 @@ except ImportError:
       " an ImportError somehow.)\n" % __file__)
     sys.exit(1)
 
+# setup logging
+logging.basicConfig(level=LOG_LEVEL)
+LOGGER = logging.getLogger('metashare.migration')
+LOGGER.addHandler(LOG_HANDLER)
 
+USERS = "users.xml"
+USER_PROFILES = "user-profiles.xml"
+LR_STATS = "lr-stats.xml"
+QUERY_STATS = "query-stats.xml"
+USAGE_STATS = "usage-stats.xml"
+
+
+def load_users(dump_folder):
+    """
+    Loads user related entities from XML in the given folder.
+    """
+    # load users
+    _load(os.path.join(dump_folder, "{}".format(USERS)))
+    # load user profiles
+    _load(os.path.join(dump_folder, "{}".format(USER_PROFILES)))
+
+
+def load_stats(dump_folder):
+    """
+    Loads statistic related entities from XML in the given folder.
+    """
+    # load lr stats
+    _load(os.path.join(dump_folder, "{}".format(LR_STATS)))
+    # load query stats
+    _load(os.path.join(dump_folder, "{}".format(QUERY_STATS)))
+    # load usage stats
+    _load(os.path.join(dump_folder, "{}".format(USAGE_STATS)))
+    
+
+def _load(dump_file):
+    """
+    Loads the objects from the given dump file and saves them in the database.
+    """
+    from django.core import serializers    
+    
+    _in = open(dump_file, "rb")
+    for obj in serializers.deserialize("xml", _in):
+        _obj = obj.object
+        _obj.save()
+    _in.close()
 
 if __name__ == "__main__":
     os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
@@ -38,6 +85,5 @@ if __name__ == "__main__":
         print "\n\tusage: {0} <source-folder>\n".format(sys.argv[0])
         sys.exit(-1)
 
-    from metashare.migration_utils import load_users, load_stats    
     load_users(sys.argv[1])
     load_stats(sys.argv[1])
