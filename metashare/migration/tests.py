@@ -13,8 +13,8 @@ from metashare.repository.models import resourceInfoType_model
 from metashare.settings import ROOT_PATH, DJANGO_BASE
 from metashare.stats.models import LRStats, QueryStats, UsageStats
 from metashare.test_utils import create_user
-from metashare.export_node_from_2_1_2_to_2_9 import dump_users, dump_stats, \
-    dump_resources
+from metashare.export_node_from_2_1_2_to_2_9 import export_users, export_stats, \
+    export_resources
 
 
 def importPublishedFixtures():
@@ -24,9 +24,9 @@ def importPublishedFixtures():
         fullpath = os.path.join(_path, filename)  
         test_utils.import_xml_or_zip(fullpath)
 
-class SerializeTests(TestCase):
+class ExportTests(TestCase):
     """
-    Test serialization of data.
+    Test export of data.
     """
     
     def setUp(self):
@@ -40,9 +40,9 @@ class SerializeTests(TestCase):
         QueryStats.objects.all().delete()
         UsageStats.objects.all().delete()
     
-    def test_users(self):
+    def test_user_export(self):
         """
-        Serialize user related entities.
+        Test user export.
         """
 
         # test staff users
@@ -54,13 +54,13 @@ class SerializeTests(TestCase):
         staffuser.save()
         # test normal user
         create_user('normaluser', 'normal@example.com', 'secret')
-        # dump
-        dump_users(os.path.join(settings.ROOT_PATH, "dump"))
+        # export
+        export_users(os.path.join(settings.ROOT_PATH, "dump"))
         
         
-    def test_stats_resources(self):
+    def test_stats_resources_export(self):
         """
-        Serialize stats related entities and resources.
+        Test stats related entities and resources export.
         """
         importPublishedFixtures()
 
@@ -76,8 +76,8 @@ class SerializeTests(TestCase):
         response = client.get(url, follow = True)
         self.assertTemplateUsed(response, 'repository/lr_view.html') 
         
-        # dump stats
-        dump_stats(os.path.join(settings.ROOT_PATH, "dump"))
+        # export stats
+        export_stats(os.path.join(settings.ROOT_PATH, "dump"))
         
-        # dump resources
-        dump_resources(os.path.join(settings.ROOT_PATH, "dump"))
+        # export resources
+        export_resources(os.path.join(settings.ROOT_PATH, "dump"))

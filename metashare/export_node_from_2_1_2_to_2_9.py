@@ -37,7 +37,7 @@ sys.path.append(PROJECT_HOME)
 # setup logging
 from metashare.settings import LOG_LEVEL, LOG_HANDLER
 logging.basicConfig(level=LOG_LEVEL)
-LOGGER = logging.getLogger('metashare.migration')
+LOGGER = logging.getLogger('metashare.migration.export')
 LOGGER.addHandler(LOG_HANDLER)
 
 USERS = "users.xml"
@@ -45,6 +45,7 @@ USER_PROFILES = "user-profiles.xml"
 LR_STATS = "lr-stats.xml"
 QUERY_STATS = "query-stats.xml"
 USAGE_STATS = "usage-stats.xml"
+STORAGE = "storage"
 
 from django.core.serializers import xml_serializer
 class MigrationSerializer(xml_serializer.Serializer):
@@ -64,7 +65,7 @@ class MigrationSerializer(xml_serializer.Serializer):
 
         self.start_serialization()
         for obj in queryset:
-            LOGGER.info("serializing {}".format(obj))
+            LOGGER.info("exporting {}".format(obj))
             self.start_object(obj)
             for field in obj._meta.local_fields:
                 if field.serialize:
@@ -92,95 +93,94 @@ class MigrationSerializer(xml_serializer.Serializer):
         return self.getvalue()
 
 
-def dump_users(dump_folder):
+def export_users(export_folder):
     """
-    Dumps user related entities as XML into the given folder.
+    Exports user related entities as XML into the given folder.
     """
 
     from django.contrib.auth.models import User
     from metashare.accounts.models import UserProfile
     
-    # create dump folder if required
-    _check_folder(dump_folder)
+    # create export folder if required
+    _check_folder(export_folder)
 
     mig_serializer = MigrationSerializer()
-    # serialize users; nothing changes
-    _serialize(
+    # export users; nothing changes
+    _export(
       User.objects.all(), 
-      os.path.join(dump_folder, "{}".format(USERS)), 
+      os.path.join(export_folder, "{}".format(USERS)), 
       mig_serializer)
-    # serialize user profiles; nothing changes
-    _serialize(
+    # export user profiles; nothing changes
+    _export(
       UserProfile.objects.all(), 
-      os.path.join(dump_folder, "{}".format(USER_PROFILES)), 
+      os.path.join(export_folder, "{}".format(USER_PROFILES)), 
       mig_serializer)
       
       
-def dump_stats(dump_folder):
+def export_stats(export_folder):
     """
-    Dumps statistic related entities as XML into the given folder.
+    Exports statistic related entities as XML into the given folder.
     """
 
     from metashare.stats.models import LRStats, QueryStats, UsageStats
     
-    # create dump folder if required
-    _check_folder(dump_folder)
+    # create export folder if required
+    _check_folder(export_folder)
     
     mig_serializer = MigrationSerializer()
-    # serialize lr stats; skip ipaddress
-    _serialize(
+    # export lr stats; skip ipaddress
+    _export(
       LRStats.objects.all(), 
-      os.path.join(dump_folder, "{}".format(LR_STATS)), 
+      os.path.join(export_folder, "{}".format(LR_STATS)), 
       mig_serializer, skip_fields=('ipaddress'))
-    # serialize query stats; skip ipaddress
-    _serialize(
+    # export query stats; skip ipaddress
+    _export(
       QueryStats.objects.all(), 
-      os.path.join(dump_folder, "{}".format(QUERY_STATS)), 
+      os.path.join(export_folder, "{}".format(QUERY_STATS)), 
       mig_serializer, skip_fields=('ipaddress'))
-    # serialize usage stats
-    _serialize(
+    # export usage stats
+    _export(
       UsageStats.objects.all(), 
-      os.path.join(dump_folder, "{}".format(USAGE_STATS)), 
+      os.path.join(export_folder, "{}".format(USAGE_STATS)), 
       mig_serializer)
 
 
-def dump_resources(dump_folder):
+def export_resources(export_folder):
     """
-    Dumps resources into the given folder using a 'storage' subfolder.
+    Exports resources into the given folder using a 'storage' subfolder.
     """
     
     from metashare.repository.models import resourceInfoType_model
 
     mig_serializer = MigrationSerializer()
     for res in resourceInfoType_model.objects.all():
-        _serialize_res(res, dump_folder, mig_serializer)
+        _export_res(res, export_folder, mig_serializer)
     
 
-
-def _check_folder(dump_folder):
+def _check_folder(folder):
     """
     Checks if the given folder exists and creates it if not.
     """
-    if not dump_folder.strip().endswith('/'):
-        dump_folder = '{0}/'.format(dump_folder)
-    _df = os.path.dirname(dump_folder)
-    if not os.path.exists(_df):
-        os.makedirs(_df)
+    if not folder.strip().endswith('/'):
+        folder = '{0}/'.format(folder)
+    _fdr = os.path.dirname(folder)
+    if not os.path.exists(_fdr):
+        os.makedirs(_fdr)
 
 
-def _serialize(objects, dump_file, serializer, skip_fields=None):
+def _export(objects, export_file, serializer, skip_fields=None):
     """
-    Serializes the given objects into the given dump file using the given
+    Exports the given objects into the given export file using the given
     serializer; skips the given fields when serializing.
     """
-    out = open(dump_file, "wb")
+    out = open(export_file, "wb")
     serializer.serialize(objects, stream=out, skip_fields=skip_fields)
     out.close()
 
 
-def _serialize_res(res, folder, serializer):
+def _export_res(res, folder, serializer):
     """
-    Serializes the given resource into the given folder. Uses the given
+    Exports the given resource into the given folder. Uses the given
     serializer to serialize the associated storage object.
     """
     
@@ -191,7 +191,7 @@ def _serialize_res(res, folder, serializer):
     target_storage_path = os.path.join(folder, "storage", storage_obj.identifier)
     _check_folder(target_storage_path)
         
-    # serialize resource metadata XML
+    # export resource metadata XML
     LOGGER.info("serializing {}".format(res))
     root_node = res.export_to_elementtree()
     xml_string = ElementTree.tostring(root_node, encoding="utf-8")
@@ -199,8 +199,8 @@ def _serialize_res(res, folder, serializer):
     with open(os.path.join(target_storage_path, "metadata.xml"), 'wb') as _out:
         _out.write(pretty)
     
-    # serialize associated storage object
-    _serialize(
+    # export associated storage object
+    _export(
       [storage_obj,], 
       os.path.join(target_storage_path, "storage.xml"), 
       serializer, skip_fields=('source', 'master_copy'))
@@ -221,6 +221,6 @@ if __name__ == "__main__":
         print "\n\tusage: {0} <target-folder>\n".format(sys.argv[0])
         sys.exit(-1)
  
-    dump_users(sys.argv[1])
-    dump_stats(sys.argv[1])
-    dump_resources(sys.argv[1])
+    export_users(sys.argv[1])
+    export_stats(sys.argv[1])
+    export_resources(sys.argv[1])
