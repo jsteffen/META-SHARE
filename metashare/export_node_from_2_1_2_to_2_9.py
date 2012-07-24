@@ -9,7 +9,6 @@ import shutil
 import logging
 from StringIO import StringIO
 from xml.etree import ElementTree
-from django.core.serializers import xml_serializer
 
 # Magic python path, based on http://djangosnippets.org/snippets/281/
 from os.path import abspath, dirname, join
@@ -30,6 +29,10 @@ except ImportError:
       "module.\n(If the file settings.py does indeed exist, it's causing" \
       " an ImportError somehow.)\n" % __file__)
     sys.exit(1)
+    
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
+PROJECT_HOME = os.path.normpath(os.getcwd() + "/..")
+sys.path.append(PROJECT_HOME)
 
 # setup logging
 from metashare.settings import LOG_LEVEL, LOG_HANDLER
@@ -43,7 +46,7 @@ LR_STATS = "lr-stats.xml"
 QUERY_STATS = "query-stats.xml"
 USAGE_STATS = "usage-stats.xml"
 
-
+from django.core.serializers import xml_serializer
 class MigrationSerializer(xml_serializer.Serializer):
     """
     Adapted version the replaces the fields options with a skip_fields option
@@ -210,9 +213,6 @@ def _serialize_res(res, folder, serializer):
 
 
 if __name__ == "__main__":
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
-    PROJECT_HOME = os.path.normpath(os.getcwd() + "/..")
-    sys.path.append(PROJECT_HOME)
     
     # Check command line parameters first.
     if len(sys.argv) < 2:
