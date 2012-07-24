@@ -10,7 +10,6 @@ import logging
 from StringIO import StringIO
 from xml.etree import ElementTree
 from django.core.serializers import xml_serializer
-from metashare.settings import LOG_LEVEL, LOG_HANDLER
 
 # Magic python path, based on http://djangosnippets.org/snippets/281/
 from os.path import abspath, dirname, join
@@ -33,6 +32,7 @@ except ImportError:
     sys.exit(1)
 
 # setup logging
+from metashare.settings import LOG_LEVEL, LOG_HANDLER
 logging.basicConfig(level=LOG_LEVEL)
 LOGGER = logging.getLogger('metashare.migration')
 LOGGER.addHandler(LOG_HANDLER)
