@@ -13,6 +13,7 @@ from metashare.settings import ROOT_PATH, DJANGO_BASE
 from metashare.stats.models import LRStats, QueryStats, UsageStats
 from metashare.test_utils import create_user
 import os
+from metashare.storage.models import INTERNAL, INGESTED
 
 
 def importPublishedFixtures():
@@ -53,9 +54,9 @@ class ASerializeTests(TestCase):
         migration_utils.dump_users(os.path.join(settings.ROOT_PATH, "dump"))
         
         
-    def test_stats(self):
+    def test_stats_resources(self):
         """
-        Serialize stats related entities.
+        Serialize stats related entities and resources.
         """
         importPublishedFixtures()
 
@@ -71,8 +72,11 @@ class ASerializeTests(TestCase):
         response = client.get(url, follow = True)
         self.assertTemplateUsed(response, 'repository/lr_view.html') 
         
-        # dump
+        # dump stats
         migration_utils.dump_stats(os.path.join(settings.ROOT_PATH, "dump"))
+        
+        # dump resources
+        migration_utils.dump_resources(os.path.join(settings.ROOT_PATH, "dump"))
         
         
 class BDeserializeTests(TestCase):

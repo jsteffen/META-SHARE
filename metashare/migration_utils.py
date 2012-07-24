@@ -9,7 +9,8 @@ from django.core.serializers import xml_serializer
 from metashare.settings import LOG_LEVEL, LOG_HANDLER
 import logging
 import os
-import sys
+from xml.etree import ElementTree
+import shutil
 
 # setup logging
 logging.basicConfig(level=LOG_LEVEL)
@@ -75,7 +76,7 @@ def dump_users(dump_folder):
     from metashare.accounts.models import UserProfile
     
     # create dump folder if required
-    _check_dump_folder(dump_folder)
+    _check_folder(dump_folder)
 
     mig_serializer = MigrationSerializer()
     # serialize users; nothing changes
@@ -98,7 +99,7 @@ def dump_stats(dump_folder):
     from metashare.stats.models import LRStats, QueryStats, UsageStats
     
     # create dump folder if required
-    _check_dump_folder(dump_folder)
+    _check_folder(dump_folder)
     
     mig_serializer = MigrationSerializer()
     # serialize lr stats; skip ipaddress
@@ -118,16 +119,27 @@ def dump_stats(dump_folder):
       mig_serializer)
 
 
-def _check_dump_folder(dump_folder):
+def dump_resources(dump_folder):
+    """
+    Dumps resources into the given folder using a 'storage' subfolder.
+    """
+    
+    from metashare.repository.models import resourceInfoType_model
+
+    mig_serializer = MigrationSerializer()
+    for res in resourceInfoType_model.objects.all():
+        _serialize_res(res, dump_folder, mig_serializer)
+    
+
+
+def _check_folder(dump_folder):
     """
     Checks if the given folder exists and creates it if not.
     """
     if not dump_folder.strip().endswith('/'):
         dump_folder = '{0}/'.format(dump_folder)
     _df = os.path.dirname(dump_folder)
-    LOGGER.info("creating {}".format(_df))
     if not os.path.exists(_df):
-        LOGGER.info("creating {}".format(_df))
         os.makedirs(_df)
 
 
@@ -139,6 +151,39 @@ def _serialize(objects, dump_file, serializer, skip_fields=None):
     out = open(dump_file, "wb")
     serializer.serialize(objects, stream=out, skip_fields=skip_fields)
     out.close()
+
+
+def _serialize_res(res, folder, serializer):
+    """
+    Serializes the given resource into the given folder. Uses the given
+    serializer to serialize the associated storage object.
+    """
+    
+    from metashare.repository.supermodel import pretty_xml
+    from metashare import settings
+    
+    storage_obj = res.storage_object
+    
+    target_storage_path = os.path.join(folder, "storage", storage_obj.identifier)
+    _check_folder(target_storage_path)
+        
+    # serialize resource metadata XML 
+    root_node = res.export_to_elementtree()
+    xml_string = ElementTree.tostring(root_node, encoding="utf-8")
+    pretty = pretty_xml(xml_string).encode('utf-8')
+    with open(os.path.join(target_storage_path, "metadata.xml"), 'wb') as _out:
+        _out.write(pretty)
+    
+    # serialize associated storage object
+    _serialize(
+      [storage_obj,], os.path.join(target_storage_path, "storage.xml"), serializer)
+    
+    # copy possible binaries
+    source_storage_path = '{0}/{1}/'.format(settings.STORAGE_PATH, storage_obj.identifier)
+    archive_path = os.path.join(source_storage_path, "archive.zip")
+    if os.path.isfile(archive_path):
+        shutil.copy(
+          archive_path, os.path.join(target_storage_path, "archive.zip"))
 
 
 def load_users(dump_folder):
