@@ -6,10 +6,8 @@ Created on 23.07.2012
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.test.client import Client
-from metashare import settings, test_utils
+from metashare import settings, test_utils, migration_utils
 from metashare.accounts.models import UserProfile
-from metashare.migration.migration_utils import dump_users, load_users, \
-    dump_stats, load_stats
 from metashare.repository.models import resourceInfoType_model
 from metashare.settings import ROOT_PATH, DJANGO_BASE
 from metashare.stats.models import LRStats, QueryStats, UsageStats
@@ -17,7 +15,14 @@ from metashare.test_utils import create_user
 import os
 
 
-class SerializeTests(TestCase):
+def importPublishedFixtures():
+    _path = '{}/repository/test_fixtures/pub/'.format(ROOT_PATH)
+    files = os.listdir(_path)   
+    for filename in files:
+        fullpath = os.path.join(_path, filename)  
+        test_utils.import_xml_or_zip(fullpath)
+
+class ASerializeTests(TestCase):
     """
     Test serialization of data.
     """
@@ -32,14 +37,6 @@ class SerializeTests(TestCase):
         LRStats.objects.all().delete()
         QueryStats.objects.all().delete()
         UsageStats.objects.all().delete()
-
-    @classmethod
-    def importPublishedFixtures(cls):
-        _path = '{}/repository/test_fixtures/pub/'.format(ROOT_PATH)
-        files = os.listdir(_path)   
-        for filename in files:
-            fullpath = os.path.join(_path, filename)  
-            test_utils.import_xml_or_zip(fullpath)
     
     def test_users(self):
         """
@@ -53,14 +50,14 @@ class SerializeTests(TestCase):
         # test normal user
         create_user('normaluser', 'normal@example.com', 'secret')
         # dump
-        dump_users(os.path.join(settings.ROOT_PATH, "dump"))
+        migration_utils.dump_users(os.path.join(settings.ROOT_PATH, "dump"))
         
         
     def test_stats(self):
         """
         Serialize stats related entities.
         """
-        SerializeTests.importPublishedFixtures()
+        importPublishedFixtures()
 
         # search
         client = Client()
@@ -75,10 +72,10 @@ class SerializeTests(TestCase):
         self.assertTemplateUsed(response, 'repository/lr_view.html') 
         
         # dump
-        dump_stats(os.path.join(settings.ROOT_PATH, "dump"))
+        migration_utils.dump_stats(os.path.join(settings.ROOT_PATH, "dump"))
         
         
-class DeserializeTests(TestCase):
+class BDeserializeTests(TestCase):
     """
     Test deserialization of data.
     """
@@ -100,7 +97,7 @@ class DeserializeTests(TestCase):
         """
         self.assertEquals(0, len(User.objects.all()))
         self.assertEquals(0, len(UserProfile.objects.all()))
-        load_users(os.path.join(settings.ROOT_PATH, "dump"))
+        migration_utils.load_users(os.path.join(settings.ROOT_PATH, "dump"))
         self.assertEquals(2, len(User.objects.all()))
         self.assertEquals(2, len(UserProfile.objects.all()))
         
@@ -111,7 +108,7 @@ class DeserializeTests(TestCase):
         self.assertEquals(0, len(LRStats.objects.all()))
         self.assertEquals(0, len(QueryStats.objects.all()))
         self.assertEquals(0, len(UsageStats.objects.all()))
-        load_stats(os.path.join(settings.ROOT_PATH, "dump"))
+        migration_utils.load_stats(os.path.join(settings.ROOT_PATH, "dump"))
         self.assertEquals(4, len(LRStats.objects.all()))
         self.assertEquals(1, len(QueryStats.objects.all()))
         self.assertEquals(127, len(UsageStats.objects.all()))
