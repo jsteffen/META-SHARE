@@ -15,7 +15,6 @@ from metashare.stats.models import LRStats, QueryStats, UsageStats
 from metashare.test_utils import create_user
 from metashare.export_node_from_2_1_2_to_2_9 import dump_users, dump_stats, \
     dump_resources
-from metashare.import_node_to_2_9_from_2_1_2 import load_users, load_stats
 
 
 def importPublishedFixtures():
@@ -25,7 +24,7 @@ def importPublishedFixtures():
         fullpath = os.path.join(_path, filename)  
         test_utils.import_xml_or_zip(fullpath)
 
-class ASerializeTests(TestCase):
+class SerializeTests(TestCase):
     """
     Test serialization of data.
     """
@@ -46,7 +45,10 @@ class ASerializeTests(TestCase):
         Serialize user related entities.
         """
 
-        # test staff user
+        # test staff users
+        admin = create_user('steffen', 'steffen@dfki.de', 'test')
+        admin.is_staff = True
+        admin.save()
         staffuser = create_user('staffuser', 'staff@example.com', 'secret')
         staffuser.is_staff = True
         staffuser.save()
@@ -79,42 +81,3 @@ class ASerializeTests(TestCase):
         
         # dump resources
         dump_resources(os.path.join(settings.ROOT_PATH, "dump"))
-        
-        
-class BDeserializeTests(TestCase):
-    """
-    Test deserialization of data.
-    """
-    
-    def setUp(self):
-        test_utils.setup_test_storage()
-    
-    def tearDown(self):
-        resourceInfoType_model.objects.all().delete()
-        User.objects.all().delete()
-        UserProfile.objects.all().delete()
-        LRStats.objects.all().delete()
-        QueryStats.objects.all().delete()
-        UsageStats.objects.all().delete()
-        
-    def test_users(self):
-        """
-        Deserialize user related entities.
-        """
-        self.assertEquals(0, len(User.objects.all()))
-        self.assertEquals(0, len(UserProfile.objects.all()))
-        load_users(os.path.join(settings.ROOT_PATH, "dump"))
-        self.assertEquals(2, len(User.objects.all()))
-        self.assertEquals(2, len(UserProfile.objects.all()))
-        
-    def test_stats(self):
-        """
-        Deserialize stats related entities.
-        """
-        self.assertEquals(0, len(LRStats.objects.all()))
-        self.assertEquals(0, len(QueryStats.objects.all()))
-        self.assertEquals(0, len(UsageStats.objects.all()))
-        load_stats(os.path.join(settings.ROOT_PATH, "dump"))
-        self.assertEquals(4, len(LRStats.objects.all()))
-        self.assertEquals(1, len(QueryStats.objects.all()))
-        self.assertEquals(127, len(UsageStats.objects.all()))

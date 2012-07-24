@@ -201,7 +201,9 @@ def _serialize_res(res, folder, serializer):
     
     # serialize associated storage object
     _serialize(
-      [storage_obj,], os.path.join(target_storage_path, "storage.xml"), serializer)
+      [storage_obj,], 
+      os.path.join(target_storage_path, "storage.xml"), 
+      serializer, skip_fields=('source', 'master_copy'))
     
     # copy possible binaries
     source_storage_path = '{0}/{1}/'.format(settings.STORAGE_PATH, storage_obj.identifier)
