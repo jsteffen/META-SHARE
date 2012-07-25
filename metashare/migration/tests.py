@@ -16,6 +16,7 @@ from metashare.test_utils import create_user
 from metashare.export_node_from_2_1_2_to_2_9 import export_users, export_stats, \
     export_resources
 from metashare.storage.models import INGESTED, INTERNAL
+import shutil
 
 
 def importPublishedFixtures():
@@ -47,7 +48,7 @@ class ExportTests(TestCase):
         """
 
         # test staff users
-        admin = create_user('steffen', 'steffen@dfki.de', 'test')
+        admin = create_user('admin', 'steffen@dfki.de', 'secret')
         admin.is_staff = True
         admin.save()
         staffuser = create_user('staffuser', 'staff@example.com', 'secret')
@@ -64,6 +65,11 @@ class ExportTests(TestCase):
         # change owner and publication status
         res_1 = resourceInfoType_model.objects.get(pk=1)
         res_1.owners.add(admin, staffuser)
+        res_1.storage_object.checksum = "3930f5022aff02c7fa27ffabf2eaaba0"
+        shutil.copyfile(
+          '{0}/repository/fixtures/archive.zip'.format(settings.ROOT_PATH),
+          '{0}/{1}/archive.zip'.format(
+            settings.STORAGE_PATH, res_1.storage_object.identifier))
         res_1.save()
         
         res_2 = resourceInfoType_model.objects.get(pk=2)
