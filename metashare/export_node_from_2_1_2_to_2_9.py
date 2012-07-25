@@ -210,7 +210,7 @@ def _export_resource(res, folder, serializer):
     _export(
       [storage_obj,], 
       os.path.join(target_storage_path, STORAGE), 
-      serializer, skip_fields=('source', 'master_copy'))
+      serializer, skip_fields=('source_id', 'master_copy'))
     
     # copy possible binaries
     source_storage_path = '{0}/{1}/'.format(settings.STORAGE_PATH, storage_obj.identifier)
