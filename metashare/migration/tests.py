@@ -48,7 +48,7 @@ class ExportTests(TestCase):
         """
 
         # test staff users
-        admin = create_user('admin', 'steffen@dfki.de', 'secret')
+        admin = create_user('admin', 'admin@example.com', 'secret')
         admin.is_staff = True
         admin.save()
         staffuser = create_user('staffuser', 'staff@example.com', 'secret')
