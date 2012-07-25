@@ -15,6 +15,7 @@ from metashare.stats.models import LRStats, QueryStats, UsageStats
 from metashare.test_utils import create_user
 from metashare.export_node_from_2_1_2_to_2_9 import export_users, export_stats, \
     export_resources
+from metashare.storage.models import INGESTED, INTERNAL
 
 
 def importPublishedFixtures():
@@ -40,9 +41,9 @@ class ExportTests(TestCase):
         QueryStats.objects.all().delete()
         UsageStats.objects.all().delete()
     
-    def test_user_export(self):
+    def test_export(self):
         """
-        Test user export.
+        Test export.
         """
 
         # test staff users
@@ -54,16 +55,28 @@ class ExportTests(TestCase):
         staffuser.save()
         # test normal user
         create_user('normaluser', 'normal@example.com', 'secret')
-        # export
+        # export users
         export_users(os.path.join(settings.ROOT_PATH, "dump"))
-        
-        
-    def test_stats_resources_export(self):
-        """
-        Test stats related entities and resources export.
-        """
+    
+        # import resources    
         importPublishedFixtures()
 
+        # change owner and publication status
+        res_1 = resourceInfoType_model.objects.get(pk=1)
+        res_1.owners.add(admin, staffuser)
+        res_1.save()
+        
+        res_2 = resourceInfoType_model.objects.get(pk=2)
+        res_2.storage_object.publication_status = INGESTED
+        # no owner for res_2
+        res_2.save()
+        
+        res_3 = resourceInfoType_model.objects.get(pk=3)
+        res_3.storage_object.publication_status = INTERNAL
+        res_3.owners.add(staffuser)
+        res_3.save()
+
+        # create some stats
         # search
         client = Client()
         response = client.get('/{0}repository/search/'.format(DJANGO_BASE), follow=True,
