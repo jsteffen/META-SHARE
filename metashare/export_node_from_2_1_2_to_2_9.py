@@ -6,7 +6,6 @@ Project: META-SHARE prototype implementation
 import os
 import sys
 import shutil
-import logging
 from StringIO import StringIO
 from xml.etree import ElementTree
 
@@ -34,23 +33,21 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 PROJECT_HOME = os.path.normpath(os.getcwd() + "/..")
 sys.path.append(PROJECT_HOME)
 
-# setup logging
-from metashare.settings import LOG_LEVEL, LOG_HANDLER
-logging.basicConfig(level=LOG_LEVEL)
-LOGGER = logging.getLogger('metashare.migration.export')
-LOGGER.addHandler(LOG_HANDLER)
-
 USERS = "users.xml"
 USER_PROFILES = "user-profiles.xml"
 LR_STATS = "lr-stats.xml"
 QUERY_STATS = "query-stats.xml"
 USAGE_STATS = "usage-stats.xml"
-STORAGE = "storage"
+STORAGE_FOLDER = "storage"
+STORAGE = "storage.xml"
+METADATA = "metadata.xml"
+RESOURCE = "resource.xml"
+ARCHIVE = "archive.zip"
 
 from django.core.serializers import xml_serializer
 class MigrationSerializer(xml_serializer.Serializer):
     """
-    Adapted version the replaces the fields options with a skip_fields option
+    Adapted version the extends the fields options with a skip_fields option
     """
     
     def serialize(self, queryset, **options):
@@ -60,34 +57,38 @@ class MigrationSerializer(xml_serializer.Serializer):
         self.options = options
 
         self.stream = options.pop("stream", StringIO())
+        self.selected_fields = options.pop("fields", None)
         self.skipped_fields = options.pop("skip_fields", None)
         self.use_natural_keys = options.pop("use_natural_keys", False)
 
         self.start_serialization()
         for obj in queryset:
-            LOGGER.info("exporting {}".format(obj))
+            print "exporting {}".format(obj)
             self.start_object(obj)
             for field in obj._meta.local_fields:
                 if field.serialize:
                     if field.rel is None:
-                        if self.skipped_fields is None or not field.attname in self.skipped_fields:
+                        if self.skipped_fields and field.attname in self.skipped_fields:
+                            print "skipping field {}:{}".format(
+                              obj.__class__.__name__, field.attname)
+                            continue
+                        if self.selected_fields is None or field.attname in self.selected_fields:
                             self.handle_field(obj, field)
-                        else:
-                            LOGGER.info("skipping field {}:{}".format(
-                              obj.__class__.__name__, field.attname))
                     else:
-                        if self.skipped_fields is None or not field.attname[:-3] in self.skipped_fields:
+                        if self.skipped_fields and field.attname in self.skipped_fields:
+                            print "skipping field {}:{}".format(
+                              obj.__class__.__name__, field.attname)
+                            continue
+                        if self.selected_fields is None or field.attname in self.selected_fields:
                             self.handle_fk_field(obj, field)
-                        else:
-                            LOGGER.info("skipping field {}:{}".format(
-                              obj.__class__.__name__, field.attname))
             for field in obj._meta.many_to_many:
                 if field.serialize:
-                    if self.skipped_fields is None or not field.attname in self.skipped_fields:
+                    if self.skipped_fields and field.attname in self.skipped_fields:
+                        print "skipping field {}:{}".format(
+                          obj.__class__.__name__, field.attname)
+                        continue
+                    if self.selected_fields is None or field.attname in self.selected_fields:
                         self.handle_m2m_field(obj, field)
-                    else:
-                        LOGGER.info("skipping field {}:{}".format(
-                          obj.__class__.__name__, field.attname))
             self.end_object(obj)
         self.end_serialization()
         return self.getvalue()
@@ -154,7 +155,7 @@ def export_resources(export_folder):
 
     mig_serializer = MigrationSerializer()
     for res in resourceInfoType_model.objects.all():
-        _export_res(res, export_folder, mig_serializer)
+        _export_resource(res, export_folder, mig_serializer)
     
 
 def _check_folder(folder):
@@ -168,17 +169,17 @@ def _check_folder(folder):
         os.makedirs(_fdr)
 
 
-def _export(objects, export_file, serializer, skip_fields=None):
+def _export(objects, export_file, serializer, skip_fields=None, fields=None):
     """
     Exports the given objects into the given export file using the given
     serializer; skips the given fields when serializing.
     """
     out = open(export_file, "wb")
-    serializer.serialize(objects, stream=out, skip_fields=skip_fields)
+    serializer.serialize(objects, stream=out, skip_fields=skip_fields, fields=fields)
     out.close()
 
 
-def _export_res(res, folder, serializer):
+def _export_resource(res, folder, serializer):
     """
     Exports the given resource into the given folder. Uses the given
     serializer to serialize the associated storage object.
@@ -188,30 +189,36 @@ def _export_res(res, folder, serializer):
     
     storage_obj = res.storage_object
     
-    target_storage_path = os.path.join(folder, "storage", storage_obj.identifier)
+    target_storage_path = os.path.join(folder, STORAGE_FOLDER, storage_obj.identifier)
     _check_folder(target_storage_path)
         
     # export resource metadata XML
-    LOGGER.info("serializing {}".format(res))
+    print "exporting {}".format(res)
     root_node = res.export_to_elementtree()
     xml_string = ElementTree.tostring(root_node, encoding="utf-8")
     pretty = pretty_xml(xml_string).encode('utf-8')
-    with open(os.path.join(target_storage_path, "metadata.xml"), 'wb') as _out:
+    with open(os.path.join(target_storage_path, METADATA), 'wb') as _out:
         _out.write(pretty)
+    
+    # export elected fields of resource object
+    _export(
+      [res,], 
+      os.path.join(target_storage_path, RESOURCE), 
+      serializer, fields=('owners'))
     
     # export associated storage object
     _export(
       [storage_obj,], 
-      os.path.join(target_storage_path, "storage.xml"), 
+      os.path.join(target_storage_path, STORAGE), 
       serializer, skip_fields=('source', 'master_copy'))
     
     # copy possible binaries
     source_storage_path = '{0}/{1}/'.format(settings.STORAGE_PATH, storage_obj.identifier)
-    archive_path = os.path.join(source_storage_path, "archive.zip")
+    archive_path = os.path.join(source_storage_path, ARCHIVE)
     if os.path.isfile(archive_path):
-        LOGGER.info("copying archive of resource {}".format(res))
+        print "copying archive of resource {}".format(res)
         shutil.copy(
-          archive_path, os.path.join(target_storage_path, "archive.zip"))
+          archive_path, os.path.join(target_storage_path, ARCHIVE))
 
 
 if __name__ == "__main__":
