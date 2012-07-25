@@ -50,6 +50,7 @@ class ExportTests(TestCase):
         # test staff users
         admin = create_user('admin', 'admin@example.com', 'secret')
         admin.is_staff = True
+        admin.is_superuser = True
         admin.save()
         staffuser = create_user('staffuser', 'staff@example.com', 'secret')
         staffuser.is_staff = True
