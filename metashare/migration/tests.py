@@ -109,7 +109,7 @@ class ExportTests(TestCase):
           groups=(test_ed_manager_group2, test_editor_group2, test_organization2))
         
         # export users
-        #export_users(os.path.join(settings.ROOT_PATH, "dump"))
+        export_users(os.path.join(settings.ROOT_PATH, "dump"))
         dump_users(os.path.join(settings.ROOT_PATH, "dump"))
     
         # import resources    

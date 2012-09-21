@@ -9,7 +9,6 @@ from xml.etree import ElementTree
 
 # Magic python path, based on http://djangosnippets.org/snippets/281/
 from os.path import abspath, dirname, join
-from django.core.management import call_command
 parentdir = dirname(dirname(abspath(__file__)))
 # Insert our dependencies:
 sys.path.insert(0, join(parentdir, 'lib', 'python2.7', 'site-packages'))
@@ -41,6 +40,8 @@ EDITOR_GROUP_MANAGERS = "editor-group-managers.xml"
 ORGANIZATIONS = "organizations.xml"
 ORGANIZATION_MANAGERS = "organization-managers.xml"
 USER_PROFILES = "user-profiles.xml"
+
+AUTH_ACCOUNTS = "auth-accounts.xml"
 
 LR_STATS = "lr-stats.xml"
 QUERY_STATS = "query-stats.xml"
@@ -136,15 +137,30 @@ def export_users(export_folder):
       Permission.objects.all(), 
       os.path.join(export_folder, "{}".format(PERMISSIONS)), 
       mig_serializer)  
-    # export groups, including subclass instances; nothing changes
-    all_objects = list(EditorGroup.objects.all()) \
-      + list(EditorGroupManagers.objects.all()) \
-      + list(Organization.objects.all()) \
-      + list(OrganizationManagers.objects.all()) \
-      + list(Group.objects.all())
+    # export groups; nothing changes
     _export(
-      all_objects, 
+      Group.objects.all(), 
       os.path.join(export_folder, "{}".format(GROUPS)), 
+      mig_serializer)
+    # export editor groups; nothing changes
+    _export(
+      EditorGroup.objects.all(), 
+      os.path.join(export_folder, "{}".format(EDITOR_GROUPS)), 
+      mig_serializer)
+    # export editor group managers; nothing changes
+    _export(
+      EditorGroupManagers.objects.all(), 
+      os.path.join(export_folder, "{}".format(EDITOR_GROUP_MANAGERS)), 
+      mig_serializer)
+    # export organizations; nothing changes
+    _export(
+      Organization.objects.all(), 
+      os.path.join(export_folder, "{}".format(ORGANIZATIONS)), 
+      mig_serializer)
+    # export organization managers; nothing changes
+    _export(
+      OrganizationManagers.objects.all(), 
+      os.path.join(export_folder, "{}".format(ORGANIZATION_MANAGERS)), 
       mig_serializer)
     # export users; nothing changes
     _export(
@@ -167,8 +183,9 @@ def dump_users(export_folder):
     # create export folder if required
     _check_folder(export_folder)
     
-    export_file = os.path.join(export_folder, "{}".format("users.xml"))
+    export_file = os.path.join(export_folder, "{}".format(AUTH_ACCOUNTS))
     out = open(export_file, "wb")
+    from django.core.management import call_command
     call_command('dumpdata', 'auth.User', 'auth.Group', 'auth.Permission',
       'contenttypes.ContentType', 'accounts.EditorGroup', 'accounts.EditorGroupManagers',
       'accounts.Organization', 'accounts.OrganizationManagers', 'accounts.UserProfile',
@@ -299,7 +316,7 @@ if __name__ == "__main__":
         print "\n\tusage: {0} <target-folder>\n".format(sys.argv[0])
         sys.exit(-1)
  
-    #export_users(sys.argv[1])
+    export_users(sys.argv[1])
     dump_users(sys.argv[1])
     export_stats(sys.argv[1])
     export_resources(sys.argv[1])
