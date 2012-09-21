@@ -125,45 +125,30 @@ def export_users(export_folder):
     _check_folder(export_folder)
 
     mig_serializer = MigrationSerializer()
-    # export users; nothing changes
-    _export(
-      User.objects.all(), 
-      os.path.join(export_folder, "{}".format(USERS)), 
-      mig_serializer)
-    # export groups; nothing changes
-    _export(
-      Group.objects.all(), 
-      os.path.join(export_folder, "{}".format(GROUPS)), 
-      mig_serializer)
-    # export permissions; nothing changes
-    _export(
-      Permission.objects.all(), 
-      os.path.join(export_folder, "{}".format(PERMISSIONS)), 
-      mig_serializer)
     # export content types; nothing changes
     _export(
       ContentType.objects.all(), 
       os.path.join(export_folder, "{}".format(CONTENT_TYPES)), 
       mig_serializer)
-    # export editor groups; nothing changes
+    # export permissions; nothing changes
     _export(
-      EditorGroup.objects.all(), 
-      os.path.join(export_folder, "{}".format(EDITOR_GROUPS)), 
+      Permission.objects.all(), 
+      os.path.join(export_folder, "{}".format(PERMISSIONS)), 
+      mig_serializer)  
+    # export groups, including subclass instances; nothing changes
+    all_objects = list(EditorGroup.objects.all()) \
+      + list(EditorGroupManagers.objects.all()) \
+      + list(Organization.objects.all()) \
+      + list(OrganizationManagers.objects.all()) \
+      + list(Group.objects.all())
+    _export(
+      all_objects, 
+      os.path.join(export_folder, "{}".format(GROUPS)), 
       mig_serializer)
-    # export editor group managers; nothing changes
+    # export users; nothing changes
     _export(
-      EditorGroupManagers.objects.all(), 
-      os.path.join(export_folder, "{}".format(EDITOR_GROUP_MANAGERS)), 
-      mig_serializer)
-    # export organizations; nothing changes
-    _export(
-      Organization.objects.all(), 
-      os.path.join(export_folder, "{}".format(ORGANIZATIONS)), 
-      mig_serializer)
-    # export organization managers; nothing changes
-    _export(
-      OrganizationManagers.objects.all(), 
-      os.path.join(export_folder, "{}".format(ORGANIZATION_MANAGERS)), 
+      User.objects.all(), 
+      os.path.join(export_folder, "{}".format(USERS)), 
       mig_serializer)
     # export user profiles; nothing changes
     _export(
