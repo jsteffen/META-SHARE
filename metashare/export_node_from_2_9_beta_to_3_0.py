@@ -164,6 +164,9 @@ def dump_users(export_folder):
     command.
     """
     
+    # create export folder if required
+    _check_folder(export_folder)
+    
     export_file = os.path.join(export_folder, "{}".format("users.xml"))
     out = open(export_file, "wb")
     call_command('dumpdata', 'auth.User', 'auth.Group', 'auth.Permission',
