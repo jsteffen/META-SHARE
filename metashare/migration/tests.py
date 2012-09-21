@@ -4,12 +4,11 @@ Created on 23.07.2012
 @author: steffen
 '''
 import os
-from django.contrib.auth.models import User
 from django.test import TestCase
 from django.test.client import Client
 from metashare import settings, test_utils
-from metashare.accounts.models import UserProfile, Organization,\
-    OrganizationManagers, EditorGroup, EditorGroupManagers
+from metashare.accounts.models import Organization, OrganizationManagers, \
+    EditorGroup, EditorGroupManagers
 from metashare.repository.models import resourceInfoType_model
 from metashare.settings import ROOT_PATH, DJANGO_BASE
 from metashare.stats.models import LRStats, QueryStats, UsageStats
@@ -18,6 +17,8 @@ from metashare.export_node_from_2_9_beta_to_3_0 import export_users, export_stat
     export_resources
 from metashare.storage.models import INGESTED, INTERNAL
 import shutil
+from metashare.accounts.admin import OrganizationManagersAdmin, \
+    EditorGroupManagersAdmin
 
 
 def importPublishedFixtures():
@@ -62,50 +63,50 @@ class ExportTests(TestCase):
         create_user('normaluser', 'normal@example.com', 'secret')
         
         # organizations
-        test_organization = Organization.objects.create(
-          name='test_organization')
+        test_organization1 = Organization.objects.create(
+          name='test_organization1')
         test_organization2 = Organization.objects.create(
           name='test_organization2')
         
         # editor groups
-        test_editor_group = EditorGroup.objects.create(
-          name='test_editor_group')
+        test_editor_group1 = EditorGroup.objects.create(
+          name='test_editor_group1')
         test_editor_group2 = EditorGroup.objects.create(
           name='test_editor_group2')
           
-        # organization managers
-        test_organization_managers = \
-          test_utils.create_organization_manager_user(
-            'test_organization_manager', 'orgman1@example.com','secret', 
-            groups=(test_organization,))
-        test_organization_managers2 = \
-          test_utils.create_organization_manager_user(
-            'test_organization_manager2', 'orgman2@example.com', 'secret',
-            groups=(test_organization2,))
+        # organization manager groups
+        test_org_manager_group1 = \
+          self.create_organization_manager_group(
+          'test_org_manager_group1', test_organization1)
+        test_org_manager_group2 = \
+          self.create_organization_manager_group(
+          'test_org_manager_group2', test_organization2)
             
         # organization members
-        org_member_1 = test_utils.create_organization_member(
-          'org_member1', 'orgmember1@example.com', 'secret', 
-          groups=(test_organization,))
-        org_member_2 = test_utils.create_organization_member(
+        org_member1 = test_utils.create_organization_member(
+          'org_member1', 'org_member1@example.com', 'secret', 
+          groups=(test_organization1,))
+        # also group manager member
+        org_member2 = test_utils.create_organization_member(
           'org_member2', 'org_member2@example.com', 'secret',
-          groups=(test_organization2, test_editor_group2))
+          groups=(test_org_manager_group2, test_organization2, test_editor_group2))
           
-        # editor group manager
-        test_editor_group_manager = test_utils.create_manager_user(
-          'ed_manager1', 'edmanager1@example.com', 'secret',
-          groups=(test_editor_group,))
-        test_editor_group_manager2 = test_utils.create_manager_user(
-          'ed_manager2', 'edmanager2@example.com', 'secret',
-          groups=(test_editor_group2,))
+        # editor group manager groups
+        test_ed_manager_group1 = \
+          self.create_editor_group_manager_group(
+          'test_ed_manager_group1', test_editor_group1)
+        test_ed_manager_group2 = \
+          self.create_editor_group_manager_group(
+          'test_ed_manager_group2', test_editor_group2)
 
         # editor group members
-        ed_member_1 = test_utils.create_editor_user(
-          'ed_user', 'eduser@example.com', 'secret',
-          groups=(test_editor_group,))
-        ed_member_2 = test_utils.create_editor_user(
+        ed_member1 = test_utils.create_editor_user(
+          'ed_user', 'eduser1@example.com', 'secret',
+          groups=(test_editor_group1,))
+        # also group manager member
+        ed_member2 = test_utils.create_editor_user(
           'ed_user2', 'eduser2@example.com', 'secret',
-          groups=(test_editor_group2, test_organization2))
+          groups=(test_ed_manager_group2, test_editor_group2, test_organization2))
         
         # export users
         export_users(os.path.join(settings.ROOT_PATH, "dump"))
@@ -115,7 +116,7 @@ class ExportTests(TestCase):
 
         # change owner and publication status
         res_1 = resourceInfoType_model.objects.get(pk=1)
-        res_1.owners.add(admin, staffuser, org_member_1, ed_member_1, test_organization_managers)
+        res_1.owners.add(admin, staffuser, org_member1, org_member2, ed_member1)
         res_1.storage_object.checksum = "3930f5022aff02c7fa27ffabf2eaaba0"
         shutil.copyfile(
           '{0}/repository/fixtures/archive.zip'.format(settings.ROOT_PATH),
@@ -130,7 +131,7 @@ class ExportTests(TestCase):
         
         res_3 = resourceInfoType_model.objects.get(pk=3)
         res_3.storage_object.publication_status = INTERNAL
-        res_3.owners.add(staffuser, org_member_2, ed_member_2, test_editor_group_manager)
+        res_3.owners.add(staffuser, org_member2, ed_member1, ed_member2)
         res_3.save()
 
         # create some stats
@@ -151,3 +152,25 @@ class ExportTests(TestCase):
         
         # export resources
         export_resources(os.path.join(settings.ROOT_PATH, "dump"))
+
+
+    def create_organization_manager_group(self, name, group):
+        """
+        Creates a new organization manager group with the given name and 
+        organization group.
+        """
+        result = OrganizationManagers.objects.create(name=name, managed_organization=group)
+        for _perm in OrganizationManagersAdmin.get_suggested_organization_manager_permissions():
+            result.permissions.add(_perm)
+        return result
+        
+    
+    def create_editor_group_manager_group(self, name, group):
+        """
+        Creates a new editor group manager group with the given name and 
+        editor group.
+        """
+        result = EditorGroupManagers.objects.create(name=name, managed_group=group)
+        for _perm in EditorGroupManagersAdmin.get_suggested_manager_permissions():
+            result.permissions.add(_perm)
+        return result

@@ -34,9 +34,11 @@ sys.path.append(PROJECT_HOME)
 USERS = "users.xml"
 GROUPS = "groups.xml"
 PERMISSIONS = "permissions.xml"
-CONTENT_TYPE = "content-type.xml"
+CONTENT_TYPES = "content-types.xml"
 EDITOR_GROUPS = "editor-groups.xml"
+EDITOR_GROUP_MANAGERS = "editor-group-managers.xml"
 ORGANIZATIONS = "organizations.xml"
+ORGANIZATION_MANAGERS = "organization-managers.xml"
 USER_PROFILES = "user-profiles.xml"
 
 LR_STATS = "lr-stats.xml"
@@ -114,7 +116,9 @@ def export_users(export_folder):
     from django.contrib.auth.models import Permission
     from django.contrib.auth.models import ContentType
     from metashare.accounts.models import EditorGroup
+    from metashare.accounts.models import EditorGroupManagers
     from metashare.accounts.models import Organization
+    from metashare.accounts.models import OrganizationManagers
     from metashare.accounts.models import UserProfile
     
     # create export folder if required
@@ -139,17 +143,27 @@ def export_users(export_folder):
     # export content types; nothing changes
     _export(
       ContentType.objects.all(), 
-      os.path.join(export_folder, "{}".format(CONTENT_TYPE)), 
+      os.path.join(export_folder, "{}".format(CONTENT_TYPES)), 
       mig_serializer)
     # export editor groups; nothing changes
     _export(
       EditorGroup.objects.all(), 
       os.path.join(export_folder, "{}".format(EDITOR_GROUPS)), 
       mig_serializer)
+    # export editor group managers; nothing changes
+    _export(
+      EditorGroupManagers.objects.all(), 
+      os.path.join(export_folder, "{}".format(EDITOR_GROUP_MANAGERS)), 
+      mig_serializer)
     # export organizations; nothing changes
     _export(
       Organization.objects.all(), 
       os.path.join(export_folder, "{}".format(ORGANIZATIONS)), 
+      mig_serializer)
+    # export organization managers; nothing changes
+    _export(
+      OrganizationManagers.objects.all(), 
+      os.path.join(export_folder, "{}".format(ORGANIZATION_MANAGERS)), 
       mig_serializer)
     # export user profiles; nothing changes
     _export(
@@ -248,8 +262,7 @@ def _export_resource(res, folder, serializer):
     # copy possible binaries
     source_storage_path = '{0}/{1}/'.format(settings.STORAGE_PATH, storage_obj.identifier)
     from metashare.storage.models import ALLOWED_ARCHIVE_EXTENSIONS
-    for archive_name in [os.path.join(source_storage_path,
-                                      ARCHIVE_TPL.format(_ext))
+    for archive_name in [ARCHIVE_TPL.format(_ext)
                          for _ext in ALLOWED_ARCHIVE_EXTENSIONS]:
         archive_path = os.path.join(source_storage_path, archive_name)
         if os.path.isfile(archive_path):
