@@ -9,6 +9,7 @@ from xml.etree import ElementTree
 
 # Magic python path, based on http://djangosnippets.org/snippets/281/
 from os.path import abspath, dirname, join
+from django.core.management import call_command
 parentdir = dirname(dirname(abspath(__file__)))
 # Insert our dependencies:
 sys.path.insert(0, join(parentdir, 'lib', 'python2.7', 'site-packages'))
@@ -114,7 +115,7 @@ def export_users(export_folder):
     from django.contrib.auth.models import User
     from django.contrib.auth.models import Group
     from django.contrib.auth.models import Permission
-    from django.contrib.auth.models import ContentType
+    from django.contrib.contenttypes.models import ContentType
     from metashare.accounts.models import EditorGroup
     from metashare.accounts.models import EditorGroupManagers
     from metashare.accounts.models import Organization
@@ -155,7 +156,22 @@ def export_users(export_folder):
       UserProfile.objects.all(), 
       os.path.join(export_folder, "{}".format(USER_PROFILES)), 
       mig_serializer)
-      
+
+
+def dump_users(export_folder):
+    """
+    Exports user related entities as XML into the given folder using the dumpata
+    command.
+    """
+    
+    export_file = os.path.join(export_folder, "{}".format("users.xml"))
+    out = open(export_file, "wb")
+    call_command('dumpdata', 'auth.User', 'auth.Group', 'auth.Permission',
+      'contenttypes.ContentType', 'accounts.EditorGroup', 'accounts.EditorGroupManagers',
+      'accounts.Organization', 'accounts.OrganizationManagers', 'accounts.UserProfile',
+      stdout=out, format='xml')
+    out.close()
+    
       
 def export_stats(export_folder):
     """
@@ -280,6 +296,7 @@ if __name__ == "__main__":
         print "\n\tusage: {0} <target-folder>\n".format(sys.argv[0])
         sys.exit(-1)
  
-    export_users(sys.argv[1])
+    #export_users(sys.argv[1])
+    dump_users(sys.argv[1])
     export_stats(sys.argv[1])
     export_resources(sys.argv[1])

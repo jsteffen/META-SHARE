@@ -13,7 +13,7 @@ from metashare.repository.models import resourceInfoType_model
 from metashare.settings import ROOT_PATH, DJANGO_BASE
 from metashare.stats.models import LRStats, QueryStats, UsageStats
 from metashare.test_utils import create_user, clean_resources_db, clean_user_db
-from metashare.export_node_from_2_9_beta_to_3_0 import export_users, export_stats, \
+from metashare.export_node_from_2_9_beta_to_3_0 import dump_users, export_users, export_stats, \
     export_resources
 from metashare.storage.models import INGESTED, INTERNAL
 import shutil
@@ -109,7 +109,8 @@ class ExportTests(TestCase):
           groups=(test_ed_manager_group2, test_editor_group2, test_organization2))
         
         # export users
-        export_users(os.path.join(settings.ROOT_PATH, "dump"))
+        #export_users(os.path.join(settings.ROOT_PATH, "dump"))
+        dump_users(os.path.join(settings.ROOT_PATH, "dump"))
     
         # import resources    
         importPublishedFixtures()
