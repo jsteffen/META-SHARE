@@ -33,10 +33,10 @@ sys.path.append(PROJECT_HOME)
 
 USERS = "users.xml"
 GROUPS = "groups.xml"
+PERMISSIONS = "permissions.xml"
+CONTENT_TYPE = "content-type.xml"
 EDITOR_GROUPS = "editor-groups.xml"
-EDITOR_GROUP_MANAGERS = "editor-group-managers.xml"
 ORGANIZATIONS = "organizations.xml"
-ORGANIZATION_MANAGERS = "organization-managers.xml"
 USER_PROFILES = "user-profiles.xml"
 
 LR_STATS = "lr-stats.xml"
@@ -73,33 +73,33 @@ class MigrationSerializer(xml_serializer.Serializer):
 
         self.start_serialization()
         for obj in queryset:
-        print "exporting {}".format(obj)
-        self.start_object(obj)
-        for field in obj._meta.local_fields:
-            if field.serialize:
-                if field.rel is None:
+            print "exporting {}".format(obj)
+            self.start_object(obj)
+            for field in obj._meta.local_fields:
+                if field.serialize:
+                    if field.rel is None:
+                        if self.skipped_fields and field.attname in self.skipped_fields:
+                            print "skipping field {}:{}".format(
+                              obj.__class__.__name__, field.attname)
+                            continue
+                        if self.selected_fields is None or field.attname in self.selected_fields:
+                            self.handle_field(obj, field)
+                    else:
+                        if self.skipped_fields and field.attname in self.skipped_fields:
+                            print "skipping field {}:{}".format(
+                              obj.__class__.__name__, field.attname)
+                            continue
+                        if self.selected_fields is None or field.attname in self.selected_fields:
+                            self.handle_fk_field(obj, field)
+            for field in obj._meta.many_to_many:
+                if field.serialize:
                     if self.skipped_fields and field.attname in self.skipped_fields:
                         print "skipping field {}:{}".format(
                           obj.__class__.__name__, field.attname)
                         continue
                     if self.selected_fields is None or field.attname in self.selected_fields:
-                        self.handle_field(obj, field)
-                else:
-                    if self.skipped_fields and field.attname in self.skipped_fields:
-                        print "skipping field {}:{}".format(
-                          obj.__class__.__name__, field.attname)
-                        continue
-                    if self.selected_fields is None or field.attname in self.selected_fields:
-                        self.handle_fk_field(obj, field)
-        for field in obj._meta.many_to_many:
-            if field.serialize:
-                if self.skipped_fields and field.attname in self.skipped_fields:
-                    print "skipping field {}:{}".format(
-                      obj.__class__.__name__, field.attname)
-                    continue
-                if self.selected_fields is None or field.attname in self.selected_fields:
-                    self.handle_m2m_field(obj, field)
-        self.end_object(obj)
+                        self.handle_m2m_field(obj, field)
+            self.end_object(obj)
         self.end_serialization()
         return self.getvalue()
 
@@ -111,10 +111,10 @@ def export_users(export_folder):
 
     from django.contrib.auth.models import User
     from django.contrib.auth.models import Group
+    from django.contrib.auth.models import Permission
+    from django.contrib.auth.models import ContentType
     from metashare.accounts.models import EditorGroup
-    from metashare.accounts.models import EditorGroupManagers
     from metashare.accounts.models import Organization
-    from metashare.accounts.models import OrganizationManagers
     from metashare.accounts.models import UserProfile
     
     # create export folder if required
@@ -131,25 +131,25 @@ def export_users(export_folder):
       Group.objects.all(), 
       os.path.join(export_folder, "{}".format(GROUPS)), 
       mig_serializer)
+    # export permissions; nothing changes
+    _export(
+      Permission.objects.all(), 
+      os.path.join(export_folder, "{}".format(PERMISSIONS)), 
+      mig_serializer)
+    # export content types; nothing changes
+    _export(
+      ContentType.objects.all(), 
+      os.path.join(export_folder, "{}".format(CONTENT_TYPE)), 
+      mig_serializer)
     # export editor groups; nothing changes
     _export(
       EditorGroup.objects.all(), 
       os.path.join(export_folder, "{}".format(EDITOR_GROUPS)), 
       mig_serializer)
-    # export editor group managers; nothing changes
-    _export(
-      EditorGroupManagers.objects.all(), 
-      os.path.join(export_folder, "{}".format(EDITOR_GROUP_MANAGERS)), 
-      mig_serializer)
     # export organizations; nothing changes
     _export(
       Organization.objects.all(), 
       os.path.join(export_folder, "{}".format(ORGANIZATIONS)), 
-      mig_serializer)
-    # export organization managers; nothing changes
-    _export(
-      OrganizationManagers.objects.all(), 
-      os.path.join(export_folder, "{}".format(ORGANIZATION_MANAGERS)), 
       mig_serializer)
     # export user profiles; nothing changes
     _export(
