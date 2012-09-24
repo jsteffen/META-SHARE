@@ -41,8 +41,6 @@ ORGANIZATIONS = "organizations.xml"
 ORGANIZATION_MANAGERS = "organization-managers.xml"
 USER_PROFILES = "user-profiles.xml"
 
-AUTH_ACCOUNTS = "auth-accounts.xml"
-
 LR_STATS = "lr-stats.xml"
 QUERY_STATS = "query-stats.xml"
 
@@ -172,25 +170,6 @@ def export_users(export_folder):
       UserProfile.objects.all(), 
       os.path.join(export_folder, "{}".format(USER_PROFILES)), 
       mig_serializer)
-
-
-def dump_users(export_folder):
-    """
-    Exports user related entities as XML into the given folder using the dumpata
-    command.
-    """
-    
-    # create export folder if required
-    _check_folder(export_folder)
-    
-    export_file = os.path.join(export_folder, "{}".format(AUTH_ACCOUNTS))
-    out = open(export_file, "wb")
-    from django.core.management import call_command
-    call_command('dumpdata', 'auth.User', 'auth.Group', 'auth.Permission',
-      'contenttypes.ContentType', 'accounts.EditorGroup', 'accounts.EditorGroupManagers',
-      'accounts.Organization', 'accounts.OrganizationManagers', 'accounts.UserProfile',
-      stdout=out, format='xml')
-    out.close()
     
       
 def export_stats(export_folder):
@@ -317,6 +296,5 @@ if __name__ == "__main__":
         sys.exit(-1)
  
     export_users(sys.argv[1])
-    dump_users(sys.argv[1])
     export_stats(sys.argv[1])
     export_resources(sys.argv[1])
